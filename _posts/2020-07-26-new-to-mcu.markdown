@@ -1,0 +1,48 @@
+---
+title: "MCU01: 通訊協議"
+date: 2020-07-26 17:26:24 +0800
+categories: [mcu]
+math: true
+image_path: /assets/img/MCU01
+---
+
+大家好。最近因為工作關係要接觸微控制器 (Mirco-Controller Unit / 單片機)。起初我的工作是把一個已經寫好了的program移植到另外一塊MCU。過程其實不難，程序庫都寫好了，我只需要調用它們就可以。
+
+在移植期間慢慢的遇到很多知識點，發現只會用還不夠，得了解那樣東西。比如通訊協議（SPI, I2C,UART等）、時間與時鐘（Clock, Timer, RTC）、GPIO（General Purpose I/O）等。我開始這個blog是希望把我學習的過程記錄下來，也給我一個理由開一個屬於自己的blog去記錄其他的事情。
+
+### SPI (Serial Peripheral Interface)
+
+第一個想說的通訊協議是SPI (Serial Peripheral Interface)。
+
+![spi][!spi]
+
+SPI有幾個主要特性：
+
+- Four-wire Serial Bus
+- Full duplex
+- One master, multiple slaves
+
+四線分別是SCLK (Clock)，MOSI (Master OUT Slave IN)，MISO (Master IN Slave OUT)和SS(Slave Select)。SS又可以寫成CS (Chip Select)，SEL等，都是一個東西。有時候則會寫成 `\SS`, `SS\`或 $$ \bar{SS} $$。這是"SS bar"，意思就是Negate，反。一般來說低電壓是沒事情，想激活就把引腳調到高電壓。$$ \bar{SS} $$則相反：平常是高電壓，想激活就弄成低電壓。這叫 Active Low，以後看資料得留意。
+
+Full duplex 全雙工的意思是收發可以同時進行。從上圖可以看到，在Master的角度，MOSI負責發，MISO負責收。他們是兩條線，所以可以同時進行收發。至於半雙工 Half duplex就是共用一條線。一方發東西的時候另外一方不能發。
+
+One Master Multiple Slaves 就是，我的MCU是Master，是老大。老大可以有很多小弟。想讓一個小弟聽命令，老大首先要跟小弟說：「誒，我要跟你說話」。這個就是靠把`SS`輸出低電平。小弟看到低電平，知道老大有命令了，就站起來聽。那如果有兩個小弟呢？看下圖：
+
+![spi_multi_slave_1][!spi_multi_slave_1]
+
+就是這樣。兩條SS連接兩個小弟。想跟哪個說話就把他的SS拉低。跟小弟二號說話時，小弟一號即使看到MOSI線有東西，他也不會讀取。那如果同時跟兩個說話，同時把他們的SS拉低，會怎樣呢？其實也不是不可以，但是有返回的data時，他們倆都會在MISO這條線發。這時候兩個小弟的聲音重疊在一起了，老大就聽不懂了。不過如果老大想給所有人發一個不需要回覆的命令，比如起床或者睡覺，那就把所有的SS拉低，然後發一個起床/睡覺指令。省下了每個Slave發一次的時間。
+
+SPI的缺點是用線多。每多一台從機就多一條線。
+
+### UART (Universal Asynchronous Receiver/Transmitter)
+
+![uart][!uart]
+
+通用非同步收發傳輸器。它用兩線傳輸 （TX，RX），也可以是四線（多了VCC和GND）。這視乎情況而定。非同步（Asynchronous)的意思是沒有時鐘讓Data參照。在傳輸之前發方和收方共同同意選擇一個傳輸率。之後兩邊的時鐘會按照這個率發送/接收數據。這個速率有個名字叫Baud Rate。他的單位是Bits per Second。最常見的是9600 bps。意思是一秒傳輸9600 bits。理論上這個數字可以任意寫，不過太快會翻車的。另外一點是UART一般是一對一的，不能有多於一台從機。
+
+[!spi]: {{page.image_path}}/spi.png
+[!spi_multi_slave_1]: {{page.image_path}}/spi_multi_slave_1.png
+[!uart]:{{page.image_path}}/uart.jpg
+
+
+
